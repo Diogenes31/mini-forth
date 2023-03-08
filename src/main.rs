@@ -20,7 +20,8 @@ fn main() -> Result<()> {
         let readline = rl.readline(PROMPT);
         match readline {
             Ok(line) => {
-                rl.add_history_entry(line.as_str())?;
+                rl.add_history_entry(line.as_str())
+                    .expect("Error adding to history");
                 println!("Line: {}", line);
             }
             Err(ReadlineError::Interrupted) => {
@@ -39,7 +40,8 @@ fn main() -> Result<()> {
     }
 
     // Same hack as above, this should go in a real history file.
-    rl.save_history("/tmp/mini-forth_history")?;
+    rl.save_history("/tmp/mini-forth_history")
+        .expect("Failed to write history");
 
     Ok(())
 }
