@@ -9,23 +9,8 @@ pub enum Lexeme {
     CompileEnd(u64),
 }
 
-// TODO: Remove this entirely
 #[derive(Debug)]
-enum Word {
-    CompileBegin(u64),
-    CompileEnd(u64),
-    CommentBegin,
-    CommentEnd,
-    Comment(String),
-    Emit,
-    Execute,
-    Interpret,
-    Number(i64),
-}
-
-#[derive(Debug)]
-pub enum ParseError {
-    UnknownWord(String),
+pub enum LexError {
     UnmatchedComment(String),
 }
 
@@ -34,48 +19,69 @@ pub struct Lexer {
     comment_depth: u64,
     compile_depth: u64,
     comment: String,
+    words: VecDeque<Lexeme>,
 }
 
 impl Lexer {
-    pub fn lex(&self, input: String) -> Result<VecDeque<Word>, ParseError> {
-        let mut words: VecDeque<Word> = VecDeque::new();
-
-        let mut comment_depth = 0;
-        let mut compile_depth = 0;
+    pub fn lex(&mut self, input: String) -> Result<(), LexError> {
         for word in input.split_whitespace() {
             match word {
                 // Handle comments
                 "(" => {
-                    comment_depth += 1;
-                    words.push_back(Word::CommentBegin);
+                    self.comment_depth += 1;
                 }
                 ")" => {
-                    if comment_depth == 0 {
-                        return Err(ParseError::UnmatchedComment(String::from(word)));
+                    if self.comment_depth == 0 {
+                        return Err(LexError::UnmatchedComment(String::from(word)));
                     }
-                    comment_depth -= 1;
-                    words.push_back(Word::CommentEnd);
+                    self.comment_depth -= 1;
+                    self.words
+                        .push_back(Lexeme::Comment(self.comment.to_owned()));
                 }
-                _word if comment_depth > 0 => {}
+                word if self.comment_depth > 0 => {
+                    if !self.comment.is_empty() {
+                        self.comment.push(' ');
+                    }
+                    self.comment.push_str(word)
+                }
+
+                // Handle numbers
+                word if word.parse::<i64>().is_ok() => {
+                    self.words.push_back(Lexeme::Number(
+                        word.parse::<i64>()
+                            .expect("Failed parsing number, this should have been impossible"),
+                    ));
+                }
 
                 // Handle compile mode
                 ":" => {
-                    words.push_back(Word::CompileBegin(compile_depth));
-                    compile_depth += 1;
+                    self.words
+                        .push_back(Lexeme::CompileBegin(self.compile_depth));
+                    self.compile_depth += 1;
                 }
                 ";" => {
-                    compile_depth -= 1;
-                    words.push_back(Word::CompileEnd(compile_depth));
+                    self.compile_depth -= 1;
+                    self.words.push_back(Lexeme::CompileEnd(self.compile_depth));
                 }
-                word if word.eq_ignore_ascii_case("emit") => {
-                    words.push_back(Word::Emit);
-                }
-                _ => {
-                    return Err(ParseError::UnknownWord(String::from(word)));
+
+                // Handle words
+                word => {
+                    self.words.push_back(Lexeme::Word(String::from(word)));
                 }
             };
         }
 
-        return Ok(words);
+        println!("{:?}", self.words);
+
+        Ok(())
+    }
+
+    pub fn new() -> Lexer {
+        Lexer {
+            comment_depth: 0,
+            compile_depth: 0,
+            comment: String::new(),
+            words: VecDeque::new(),
+        }
     }
 }
