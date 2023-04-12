@@ -10,7 +10,6 @@ use std::result::Result;
 use std::string::String;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
-const PROMPT: &str = "4th: ";
 
 /**
  * This is a FORTH interpreter based on the introduction at www.forth.com:
@@ -31,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     loop {
-        let readline = rl.readline(PROMPT);
+        let readline = rl.readline("");
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_str())
